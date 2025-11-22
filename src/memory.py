@@ -74,3 +74,21 @@ def or_bits(a: BitVec, b: BitVec) -> BitVec:
 
 def xor_bits(a: BitVec, b: BitVec) -> BitVec:
     return tuple(Bit(bool(x) ^ bool(y)) for x, y in zip(a, b))
+
+# Bit-vector helpers (no num math)
+
+def bits_zero(n: int) -> BitVec:
+    # n zeros
+    return tuple(Bit(False) for _ in range(n))
+
+def bits_one_hot_lsb(n: int) -> BitVec:
+    # ..0001 (LSB = 1)
+    if n <= 0:
+        return tuple()
+    return tuple(Bit(False) for _ in range(n-1)) + (Bit(True),)
+
+def concat(*vecs: Iterable[Bit]) -> BitVec:
+    out: List[Bit] = []
+    for v in vecs:
+        out.extend(v)
+    return tuple(out)
