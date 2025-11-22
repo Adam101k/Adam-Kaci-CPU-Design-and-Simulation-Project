@@ -1,0 +1,2 @@
+[console_scripts]
+SD-sim = main:main

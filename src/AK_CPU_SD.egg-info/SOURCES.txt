@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/main.py
+src/AK_CPU_SD.egg-info/PKG-INFO
+src/AK_CPU_SD.egg-info/SOURCES.txt
+src/AK_CPU_SD.egg-info/dependency_links.txt
+src/AK_CPU_SD.egg-info/entry_points.txt
+src/AK_CPU_SD.egg-info/requires.txt
+src/AK_CPU_SD.egg-info/top_level.txt
+tests/test_alu.py
+tests/test_fpu.py
+tests/test_mdu.py
+tests/test_twos.py
