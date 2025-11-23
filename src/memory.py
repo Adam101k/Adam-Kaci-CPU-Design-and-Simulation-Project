@@ -185,3 +185,15 @@ class FPRegFile:
 
     def write(self, idx: int, v: BitVec) -> None:
         self._regs[idx].load(v)
+
+# Canonical 32b zero and factories
+
+ZERO32: Bitx32 = bits_zero(32)
+
+def make_bitx32(bits: Iterable[Bit]) -> Bitx32:
+    v = tuple(bits)
+    return zero_extend(v, 32) if len(v) < 32 else tuple(v[-32:])
+
+def make_bitx12(bits: Iterable[Bit]) -> Bitx12:
+    v = tuple(bits)
+    return zero_extend(v, 12) if len(v) < 12 else tuple(v[-12:])
