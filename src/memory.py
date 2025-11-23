@@ -127,3 +127,26 @@ def or_bits(a: BitVec, b: BitVec) -> BitVec:
 
 def xor_bits(a: BitVec, b: BitVec) -> BitVec:
     return tuple(Bit(bool(x) ^ bool(y)) for x, y in zip(a, b))
+
+class Reg:
+    # Synchronous load/clear register storing a fixed-width bit vector.
+    width: int
+    _bits: BitVec = None # set in __post_init__
+
+    def __post_init__(self):
+        if self._bits is None:
+            self._bits = bits_zero(self.width)
+            
+    def load(self, v: BitVec) -> None:
+        # Keep right-most width bits (LSBs), MSB-first ordering kept
+        v = tuple(v)[-self.width:]
+        # If caller provides narrower, zero-extend on the left (MSB side)
+        if len(v) < self.width:
+            v = zero_extend(v, self.width)
+        self._bits = v
+
+    def clear(self) -> None:
+        self._bits = bits_zero(self.width)
+
+    def read(self) -> BitVec:
+        return tuple(self._bits)
