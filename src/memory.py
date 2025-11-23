@@ -150,3 +150,38 @@ class Reg:
 
     def read(self) -> BitVec:
         return tuple(self._bits)
+    
+class RegFile:
+    # Integer register file: 32 entries of width 32, x0 hard-wired to zero (writes ingnored)
+    
+    def __init__(self, count: int = 32, width: int = 32, hardwired_zero_idx: int | None = 0):
+        self.count = count
+        self.width = width
+        self.zero_idx = hardwired_zero_idx
+        self._regs = [Reg(width) for _ in range(count)]
+
+        # Enforce x0 = 9
+        if self.zero_idx is not None:
+            self._regs[self.zero_idx].clear()
+
+    def read(self, idx: int) -> BitVec:
+        return self._regs[idx].read()
+        
+    def write(self, idx: int, v: BitVec) -> None:
+        if self.zero_idx is not None and idx == self.zero_idx:
+            return 
+        self._regs[idx].load(v)
+
+class FPRegFile:
+    # Floating point register file: 32 entries (default width=32 for single-precsion)
+    # For double-precision, construct with width=64
+    def __init__(self, count: int = 32, width: int = 32):
+        self.count = count
+        self.width = width
+        self._regs = [Reg(width) for _ in range(count)]
+
+    def read(self, idx: int) -> BitVec:
+        return self._regs[idx].read()
+
+    def write(self, idx: int, v: BitVec) -> None:
+        self._regs[idx].load(v)
