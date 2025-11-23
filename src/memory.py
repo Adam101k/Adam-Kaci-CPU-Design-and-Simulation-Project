@@ -92,3 +92,38 @@ def concat(*vecs: Iterable[Bit]) -> BitVec:
     for v in vecs:
         out.extend(v)
     return tuple(out)
+
+def msb(v: BitVec) -> Bit:
+    return v[0] if v else Bit(False)
+
+def lsb(v: BitVec) -> Bit:
+    return v[-1] if v else Bit(False)
+
+def slice_bits(v: BitVec, start: int, end: int) -> BitVec:
+    # (start:end) MSB-indexed (0 is MSB)
+    return tuple(v[start:end])
+
+def zero_extend(v: BitVec, new_width: int) -> BitVec:
+    if len(v) >= new_width:
+        return tuple(v[-new_width:])
+    pad = bits_zero(new_width - len(v))
+    return concat(pad, v)
+
+def sign_extend(v: BitVec, new_width: int) -> BitVec:
+    s = msb(v)
+    if len(v) >= new_width:
+        return tuple(v[-new_width:])
+    pad = tuple(s for _ in range(new_width - len(v)))
+    return concat(pad, v)
+
+def not_bits(v: BitVec) -> BitVec:
+    return tuple(Bit(not b.as_bool()) for b in v)
+
+def and_bits(a: BitVec, b: BitVec) -> BitVec:
+    return tuple(Bit(bool(x) and bool(y)) for x, y in zip(a, b))
+
+def or_bits(a: BitVec, b: BitVec) -> BitVec:
+    return tuple(Bit(bool(x) or bool(y)) for x, y in zip(a, b))
+
+def xor_bits(a: BitVec, b: BitVec) -> BitVec:
+    return tuple(Bit(bool(x) ^ bool(y)) for x, y in zip(a, b))
