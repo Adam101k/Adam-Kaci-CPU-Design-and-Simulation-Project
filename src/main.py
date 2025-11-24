@@ -5,6 +5,7 @@ from alu import ALU32, alu32
 from fpu import fadd_f32, fsub_f32, fmul_f32
 from mdu import mdu_mul, mdu_div
 from loader import load_hex_file
+from runner import run_hex
 
 def _bits32_from_int(v: int):
     u = v & 0xFFFFFFFF
@@ -28,6 +29,7 @@ def main():
     pm = sub.add_parser("mul");  pm.add_argument("a", type=int); pm.add_argument("b", type=int); pm.add_argument("--trace", action="store_true")
     pd = sub.add_parser("div");  pd.add_argument("a", type=int); pd.add_argument("b", type=int); pd.add_argument("--unsigned", action="store_true"); pd.add_argument("--trace", action="store_true")
     pl = sub.add_parser("loadhex"); pl.add_argument("path")
+    pr = sub.add_parser("runhex"); pr.add_argument("path"); pr.add_argument("--trace", action="store_true"); pr.add_argument("--steps", type=int, default=200)
 
     args = p.parse_args()
 
@@ -75,6 +77,18 @@ def main():
     elif args.cmd=="loadhex":
         prog = load_hex_file(args.path)
         print(f"Loaded {len(prog)} words from {args.path}")
+    elif args.cmd == "runhex":
+        from runner import run_hex
+        out = run_hex(args.path, max_steps=args.steps, trace=args.trace)
+        regs = out["regs"]; mem = out["mem"]
+        print(f"Completed in {out['steps']} steps, PC=0x{out['pc']:08X}")
+        # show a few interesting regs the sample touches
+        for i in (1,2,3,4,5,6):
+            print(f"x{i} = 0x{regs[i]:08X}")
+        # sample stores at 0x0001_0000
+        addr = 0x00010000
+        if addr in mem:
+            print(f"mem[0x{addr:08X}] = 0x{mem[addr]:08X}")
 
 if __name__ == "__main__":
     main()
