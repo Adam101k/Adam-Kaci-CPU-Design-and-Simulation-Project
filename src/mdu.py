@@ -223,7 +223,7 @@ def mdu_div(op: DivOp, rs1: Bits, rs2: Bits) -> Dict[str, object]:
         return {"q_bits": q, "r_bits": r, "flags": {"overflow": False}, "trace": trace}
 
     # Signed special: INT_MIN / -1
-    if not unsigned and _is_int_min(a) and all(not x for x in b[1:]) and bool(b[0]):
+    if not unsigned and _is_int_min(a) and _is_all_ones(b):
         trace.append("DIV special: INT_MIN / -1 → saturate")
         q = a  # INT_MIN
         r = _zeros(32)
@@ -256,3 +256,10 @@ def mdu_div(op: DivOp, rs1: Bits, rs2: Bits) -> Dict[str, object]:
     else:
         # By spec we covered the four ops; fallback identical to DIV
         return {"q_bits": q_bits, "r_bits": r_bits, "flags": {"overflow": False}, "trace": trace}
+    
+# Quick helper
+def _is_all_ones(v: Bits) -> bool:
+    acc = Bit(True)
+    for b in v:
+        acc = g.and_gate(acc, b)
+    return bool(acc)
