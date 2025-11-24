@@ -97,3 +97,58 @@ def _sign_extend(v: Bits, to_w: int) -> Bits:
 
 def _pack64(hi: Bits, lo: Bits) -> Bits:
     return hi + lo
+
+def _mul_u32x32_to_u64(rs1: Bits, rs2: Bits, trace: List[str]) -> Bits:
+    # Unsigned 32x32 -> 64 via shift-add. rs1 multiplicand, rs2 multiplier
+    A = [Bit(False) for _ in range(64)]  # accumulator/product
+    multiplicand = _assert_w(rs1, 32)
+    multiplier   = _assert_w(rs2, 32)
+
+    for i in range(32):
+        lsb = multiplier[-1]
+        if bool(lsb):
+            # add multiplicand aligned at bit i (from LSB)
+            # align multiplicand in 64-bit space:
+            # left 32 bits are zeros for this simple adder injection
+            aligned = list(_zeros(32)) + list(multiplicand)
+            # shift left by i (i times) within 64b
+            for _ in range(i):
+                for j in range(63):
+                    aligned[j] = aligned[j + 1]
+                aligned[63] = Bit(False)
+            # A = A + aligned
+            carry = Bit(False)
+            for k in range(63, -1, -1):
+                s, carry = g.full_adder(A[k], aligned[k], carry)
+                A[k] = s
+            trace.append(f"MUL step{i}: add")
+        # shift multiplier >> 1 (logical)
+        multiplier = _shr_logical(multiplier, 1)
+
+    return tuple(A)
+
+def _mul_overflow_signed32(low32: Bits, full64: Bits) -> Bit:
+    # Overflow if 64-bit product doesn't fit signed 32:
+    # i.e., top 32 bits must be all sign-bit copies of low32[0]
+    sign32 = low32[0]
+    hi32 = full64[0:32]
+    diff = Bit(False)
+    for b in hi32:
+        diff = g.or_gate(diff, g.xor_gate(b, sign32))
+    return diff  # True if any bit differs -> overflow
+
+def mdu_mul(op: MulOp, rs1: Bits, rs2: Bits) -> Dict[str, object]:
+    # Mul (low 32) via unsigned shift-add
+    # Returns: {'rd_bits': 32b, 'flags': {'overflow': bool}, 'trace': [str,...]}
+    trace: List[str] = []
+    rs1 = _assert_w(rs1, 32)
+    rs2 = _assert_w(rs2, 32)
+
+    trace.append("MUL start: 32x32 -> 64 shift-add")
+    prod64 = _mul_u32x32_to_u64(rs1, rs2, trace)
+    rd_bits = prod64[32:] # Low 32 bits
+
+    of = _mul_overflow_signed32(rd_bits, prod64)
+    return {"rd_bits": rd_bits, "flags": {"overflow": bool(of)}, "trace": trace}
+
+# Time for RV32 Div and Remainder
