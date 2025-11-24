@@ -198,4 +198,61 @@ def _neg_if(bit: Bit, val: Bits) -> Bits:
 def _is_int_min(x: Bits) -> bool:
     return bool(x[0]) and all(not b for b in x[1:])
 
-def mdu_div
+def mdu_div(op: DivOp, rs1: Bits, rs2: Bits) -> Dict[str, object]:
+    # DIV/DIVU/REM/REMU with RISC-V edge semantics and trace.
+    # Returns: for DIV/DIVU -> {'q_bits':..., 'r_bits':..., 'flags': {'overflow': bool}, 'trace': [str,...]}
+    # for REM/REMU -> same shape but you can ignore q_bits in callers if unused.
+    
+    trace: List[str] = []
+    a = _assert_w(rs1, 32)
+    b = _assert_w(rs2, 32)
+
+    unsigned = op in ("DIVU", "REMU")
+    want_quot = op in ("DIV", "DIVU")
+    want_rem  = op in ("REM", "REMU")
+
+    # Divide by zero
+    if _is_zero(b):
+        trace.append("DIV special: divide-by-zero")
+        if op in ("DIV", "REM"):
+            q = tuple(Bit(True) for _ in range(32))  # -1
+            r = a
+        else:  # DIVU/REMU
+            q = tuple(Bit(True) for _ in range(32))  # all ones
+            r = a
+        return {"q_bits": q, "r_bits": r, "flags": {"overflow": False}, "trace": trace}
+
+    # Signed special: INT_MIN / -1
+    if not unsigned and _is_int_min(a) and all(not x for x in b[1:]) and bool(b[0]):
+        trace.append("DIV special: INT_MIN / -1 → saturate")
+        q = a  # INT_MIN
+        r = _zeros(32)
+        return {"q_bits": q, "r_bits": r, "flags": {"overflow": True}, "trace": trace}
+
+    # Prepare operands for unsigned division
+    if unsigned:
+        a_abs, a_neg = a, Bit(False)
+        b_abs, b_neg = b, Bit(False)
+        q_sign = Bit(False)
+        r_sign = Bit(False)
+    else:
+        a_abs, a_neg = _abs_signed32(a)
+        b_abs, b_neg = _abs_signed32(b)
+        q_sign = g.xor_gate(a_neg, b_neg)  # quotient sign
+        r_sign = a_neg                     # remainder sign
+
+    # Core restoring division on magnitudes
+    q_abs, r_abs = _restoring_div_unsigned(a_abs, b_abs, trace)
+
+    # Apply signs (trunc toward zero; remainder has sign of dividend)
+    q_bits = _neg_if(q_sign, q_abs)
+    r_bits = _neg_if(r_sign, r_abs)
+
+    # Shape result based on op
+    if want_quot:  # DIV or DIVU
+        return {"q_bits": q_bits, "r_bits": r_bits, "flags": {"overflow": False}, "trace": trace}
+    elif want_rem:  # REM or REMU
+        return {"q_bits": q_bits, "r_bits": r_bits, "flags": {"overflow": False}, "trace": trace}
+    else:
+        # By spec we covered the four ops; fallback identical to DIV
+        return {"q_bits": q_bits, "r_bits": r_bits, "flags": {"overflow": False}, "trace": trace}
