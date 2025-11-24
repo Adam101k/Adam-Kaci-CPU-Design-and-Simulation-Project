@@ -4,7 +4,7 @@ from memory import Bit
 import gates as g
 
 Bits = Tuple[Bit, ...]
-MulOp = Literal["MUL"] # (extend later: "MULH", "MULHU", "MULHSU")
+MulOp = Literal["MUL", "MULH", "MULHU", "MULHSU"]
 DivOp = Literal["DIV", "DIVU", "REM", "REMU"]
 
 def _zeros(n: int) -> Bits:
@@ -79,15 +79,22 @@ def _unsigned_less_than(a: Bits, b: Bits) -> bool:
     return False
 
 def _twos_negate(a: Bits) -> Bits:
-    inv = _not_vec(a)
-    one = _one_hot_lsb(len(a))
-    s, _ = _add_unsigned(inv, one)
-    return s
+    inv = tuple(g.not_gate(x) for x in a)
+    one = tuple(Bit(False) for _ in range(len(a) - 1)) + (Bit(True),)
+    # add inv + 1
+    out = [Bit(False)] * len(a)
+    carry = Bit(False)
+    # add 'inv' and 'one'
+    for i in range(len(a) - 1, -1, -1):
+        s, carry = g.full_adder(inv[i], one[i], carry)
+        out[i] = s
+    return tuple(out)
 
 def _abs_signed32(a: Bits) -> Tuple[Bits, Bit]:
-    """Return (abs(a), is_negative). a is 32-bit two's complement."""
     neg = a[0]
-    return (_twos_negate(a) if bool(neg) else a), neg
+    if bool(neg):
+        return _twos_negate(a), Bit(True)
+    return a, Bit(False)
 
 def _sign_extend(v: Bits, to_w: int) -> Bits:
     s = v[0] if v else Bit(False)
@@ -99,19 +106,15 @@ def _pack64(hi: Bits, lo: Bits) -> Bits:
     return hi + lo
 
 def _mul_u32x32_to_u64(rs1: Bits, rs2: Bits, trace: List[str]) -> Bits:
-    # Unsigned 32x32 -> 64 via shift-add. rs1 multiplicand, rs2 multiplier
-    A = [Bit(False) for _ in range(64)]  # accumulator/product
-    multiplicand = _assert_w(rs1, 32)
-    multiplier   = _assert_w(rs2, 32)
+    A = [Bit(False) for _ in range(64)]  # accumulator/product (MSB-first)
+    multiplicand = rs1[-32:] if len(rs1) >= 32 else (tuple(Bit(False) for _ in range(32 - len(rs1))) + rs1)
+    multiplier   = rs2[-32:] if len(rs2) >= 32 else (tuple(Bit(False) for _ in range(32 - len(rs2))) + rs2)
 
     for i in range(32):
         lsb = multiplier[-1]
         if bool(lsb):
-            # add multiplicand aligned at bit i (from LSB)
-            # align multiplicand in 64-bit space:
-            # left 32 bits are zeros for this simple adder injection
-            aligned = list(_zeros(32)) + list(multiplicand)
-            # shift left by i (i times) within 64b
+            aligned = list(tuple(Bit(False) for _ in range(32)) + multiplicand)
+            # shift aligned left by i (within 64 bits)
             for _ in range(i):
                 for j in range(63):
                     aligned[j] = aligned[j + 1]
@@ -122,8 +125,12 @@ def _mul_u32x32_to_u64(rs1: Bits, rs2: Bits, trace: List[str]) -> Bits:
                 s, carry = g.full_adder(A[k], aligned[k], carry)
                 A[k] = s
             trace.append(f"MUL step{i}: add")
-        # shift multiplier >> 1 (logical)
-        multiplier = _shr_logical(multiplier, 1)
+        # shift multiplier >> 1
+        mm = list(multiplier)
+        for j in range(31, 0, -1):
+            mm[j] = mm[j - 1]
+        mm[0] = Bit(False)
+        multiplier = tuple(mm)
 
     return tuple(A)
 
@@ -138,18 +145,45 @@ def _mul_overflow_signed32(low32: Bits, full64: Bits) -> Bit:
     return diff  # True if any bit differs -> overflow
 
 def mdu_mul(op: MulOp, rs1: Bits, rs2: Bits) -> Dict[str, object]:
-    # Mul (low 32) via unsigned shift-add
-    # Returns: {'rd_bits': 32b, 'flags': {'overflow': bool}, 'trace': [str,...]}
     trace: List[str] = []
-    rs1 = _assert_w(rs1, 32)
-    rs2 = _assert_w(rs2, 32)
+    rs1 = rs1[-32:] if len(rs1) >= 32 else (tuple(Bit(False) for _ in range(32 - len(rs1))) + rs1)
+    rs2 = rs2[-32:] if len(rs2) >= 32 else (tuple(Bit(False) for _ in range(32 - len(rs2))) + rs2)
 
-    trace.append("MUL start: 32x32 -> 64 shift-add")
-    prod64 = _mul_u32x32_to_u64(rs1, rs2, trace)
-    rd_bits = prod64[32:] # Low 32 bits
+    if op == "MUL":
+        trace.append("MUL start: 32x32 -> 64 shift-add (low 32)")
+        prod64 = _mul_u32x32_to_u64(rs1, rs2, trace)
+        rd_bits = prod64[32:]  # low 32
+        of = _mul_overflow_signed32(rd_bits, prod64)
+        return {"rd_bits": rd_bits, "flags": {"overflow": bool(of)}, "trace": trace}
 
-    of = _mul_overflow_signed32(rd_bits, prod64)
-    return {"rd_bits": rd_bits, "flags": {"overflow": bool(of)}, "trace": trace}
+    elif op == "MULHU":
+        trace.append("MULHU start: unsigned×unsigned high 32")
+        prod64 = _mul_u32x32_to_u64(rs1, rs2, trace)
+        hi = prod64[0:32]
+        return {"rd_bits": hi, "flags": {"overflow": False}, "trace": trace}
+
+    elif op == "MULH":
+        trace.append("MULH start: signed×signed high 32")
+        a_abs, a_neg = _abs_signed32(rs1)
+        b_abs, b_neg = _abs_signed32(rs2)
+        prod64 = _mul_u32x32_to_u64(a_abs, b_abs, trace)
+        # If signs differ, negate the 64-bit product
+        if bool(g.xor_gate(a_neg, b_neg)):
+            prod64 = _twos_negate(prod64)
+        hi = prod64[0:32]
+        return {"rd_bits": hi, "flags": {"overflow": False}, "trace": trace}
+
+    elif op == "MULHSU":
+        trace.append("MULHSU start: signed×unsigned high 32")
+        a_abs, a_neg = _abs_signed32(rs1)
+        prod64 = _mul_u32x32_to_u64(a_abs, rs2, trace)
+        if bool(a_neg):
+            prod64 = _twos_negate(prod64)
+        hi = prod64[0:32]
+        return {"rd_bits": hi, "flags": {"overflow": False}, "trace": trace}
+
+    else:
+        raise ValueError(f"Unknown MUL op {op}")
 
 # Division / Remainder (RV32)
 
