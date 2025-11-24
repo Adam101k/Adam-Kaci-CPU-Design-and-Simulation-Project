@@ -151,4 +151,51 @@ def mdu_mul(op: MulOp, rs1: Bits, rs2: Bits) -> Dict[str, object]:
     of = _mul_overflow_signed32(rd_bits, prod64)
     return {"rd_bits": rd_bits, "flags": {"overflow": bool(of)}, "trace": trace}
 
-# Time for RV32 Div and Remainder
+# Division / Remainder (RV32)
+
+def _restoring_div_unsigned(dividend: Bits, divisor: Bits, trace: List[str]) -> Tuple[Bits, Bits]:
+    # Unsigned restoring division: dividend/divisor -> (quotient, remainder)
+    # Iterates 32 steps; uses 33-bit remainder
+    n = 32
+    Q = list(_assert_w(dividend, n))
+    D = _assert_w(divisor, n)
+    R = list(_zeros(n + 1))  # 33-bit remainder
+
+    trace.append("DIV start: restoring unsigned")
+
+    for i in range(n):
+        # Left shift (R,Q) by 1
+        # R: <<1; bring in Q[0] into R LSB
+        msb_q = Q[0]
+        # shift R << 1
+        for j in range(0, n):
+            R[j] = R[j + 1]
+        R[n] = msb_q
+        # shift Q << 1
+        for j in range(0, n - 1):
+            Q[j] = Q[j + 1]
+        Q[n - 1] = Bit(False)
+
+        # R = R - D
+        R_before = tuple(R)
+        R_sub, borrow = _sub_unsigned(tuple(R), _zeros(1) + D)  # align D under low n+1 bits
+        R = list(R_sub)
+        if bool(borrow):
+            # restore and set Q LSB=0
+            R = list(R_before)
+            Q[-1] = Bit(False)
+            trace.append(f"DIV step{i}: restore (R<D)")
+        else:
+            # keep and set Q LSB=1
+            Q[-1] = Bit(True)
+            trace.append(f"DIV step{i}: keep (R>=D)")
+
+    return tuple(Q), tuple(R)[-32:]  # quotient, remainder (low 32 of 33-bit)
+
+def _neg_if(bit: Bit, val: Bits) -> Bits:
+    return _twos_negate(val) if bool(bit) else val
+
+def _is_int_min(x: Bits) -> bool:
+    return bool(x[0]) and all(not b for b in x[1:])
+
+def mdu_div
