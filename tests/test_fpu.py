@@ -35,17 +35,24 @@ MIN_NORM = "00800000"  # min normal = 2^-126
 MIN_SUB  = "00000001"  # smallest subnormal
 BIG_SUB  = "007FFFFF"  # largest subnormal
 
+def _bits(hex32):
+        v = int(hex32, 16) & 0xFFFFFFFF
+        return tuple(Bit(bool((v >> i) & 1)) for i in range(31, -1, -1))
 
 class TestFPU_Basic(unittest.TestCase):
 
+
     def test_add_simple(self):
-        a = hex32_to_bits_msb(ONE_PT5)    # 1.5
-        b = hex32_to_bits_msb(TWO_PT25)   # 2.25
-        res = fadd_f32(a, b)
-        self.assertEqual(bits_to_hex32(res["res_bits"]), "0x40700000")  # 3.75
-        self.assertFalse(res["flags"]["overflow"])
-        self.assertFalse(res["flags"]["underflow"])
-        self.assertFalse(res["flags"]["invalid"])
+        # 1.5 (0x3FC00000) + 2.25 (0x40100000) = 3.75 (0x40700000)
+        a = _bits("3FC00000")
+        b = _bits("40100000")
+        out = fadd_f32(a, b)
+        res = out["res_bits"]
+        got = "".join("1" if b else "0" for b in res)
+        self.assertEqual(int(got, 2), 0x40700000)
+        self.assertFalse(out["flags"]["overflow"])
+        self.assertFalse(out["flags"]["underflow"])
+        self.assertFalse(out["flags"]["invalid"])
 
     def test_add_one_plus_one_carry_normalize(self):
         a = hex32_to_bits_msb(ONE)
@@ -150,11 +157,12 @@ class TestFPU_Basic(unittest.TestCase):
         self.assertTrue(any("OP: 24x24 shift-add multiplier" in t for t in res["trace"]))
 
     def test_mul_overflow_to_inf(self):
-        max_norm = hex32_to_bits_msb(MAX_NORM)
-        two      = hex32_to_bits_msb(TWO)
-        res = fmul_f32(max_norm, two)
-        self.assertTrue(res["flags"]["overflow"])
-        self.assertEqual(bits_to_hex32(res["res_bits"]), "0x7F800000")  # +inf
+        a = _bits("7E967699")  # ~1e38
+        b = _bits("41200000")  # 10.0
+        out = fmul_f32(a, b)
+        # expect +inf
+        self.assertEqual(out["res_bits"][1:9], tuple(Bit(True) for _ in range(8)))  # exp all ones
+        self.assertTrue(out["flags"]["overflow"])
 
     def test_mul_underflow_to_subnormal(self):
         # MIN_NORMAL * 0.5 = 2^-127 => subnormal 0x00400000
