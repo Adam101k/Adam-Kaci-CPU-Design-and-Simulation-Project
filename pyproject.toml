@@ -11,7 +11,7 @@ dependencies = ["pytest>=9.0.1"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-py-modules = ["main"]
+py-modules = ["main","alu","fpu","gates","memory","twos","mdu"]
 
 [project.scripts]
 SD-sim = "main:main"
