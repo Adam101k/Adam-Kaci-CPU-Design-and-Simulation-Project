@@ -19,6 +19,20 @@ class Bit:
     def as_bool(self) -> bool:
         return self._v
     
+    # value-based equality so Bit(True) == Bit(True)
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Bit):
+            return self._v == other._v
+        # allow comparison to plain bools/ints in a pinch
+        try:
+            return self._v == bool(other)
+        except Exception:
+            return NotImplemented
+        
+    # hash consistent with equality (lets Bits be used in sets/dicts)
+    def __hash__(self) -> int:
+        return 1 if self._v else 0
+    
 BitVec = Tuple[Bit, ...]
 Bitx12 = BitVec
 Bitx32 = BitVec

@@ -110,6 +110,8 @@ class FPU32:
         if bool(adjust):
             exp9, _ = self._inc_unsigned(exp9)
             trace.append("NORMALIZE: product in [2,4) → exp++")
+        
+        exp9_overflow = bool(exp9[0])
 
         # Convert to 8-bit exponent (drop top bit)
         exp8 = exp9[1:]
@@ -120,12 +122,15 @@ class FPU32:
         flags = {"overflow": False, "underflow": False, "invalid": False, "inexact": bool(inexact), "divide_by_zero": False}
 
         # Overflow → ±∞
-        if self._is_exp_all_ones(exp8):
+        if exp9_overflow or self._is_exp_all_ones(exp8):
             trace.append("PACK: exponent overflow → ±∞")
             flags["overflow"] = True
-            flags["inexact"]  = True or flags["inexact"]
-            return {"res_bits": self.pack_f32(sR, self.EXP_ALL_ONES, self._zeros(self.FRAC_BITS)),
-                    "flags": flags, "trace": trace}
+            flags["inexact"] = True or flags["inexact"]
+            return {
+                "res_bits": self.pack_f32(sR, self.EXP_ALL_ONES, self._zeros(self.FRAC_BITS)),
+                "flags": flags,
+                "trace": trace
+            }
 
         # Underflow if exponent field is zero (subnormal/zero), even if exact
         if self._is_exp_all_zeros(exp8):
