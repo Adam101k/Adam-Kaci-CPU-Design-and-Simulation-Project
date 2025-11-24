@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Tuple, Dict, List
-from memory import Bit, Bitx32, bits_zero, xor_bits, and_bits, or_bits, not_bits, concat
+from memory import Bit, Bitx32, bits_zero, xor_bits, and_bits, or_bits, not_bits
+from shifter import shift32
 import gates as g
 
 Bits = Tuple[Bit, ...]
@@ -109,16 +110,18 @@ class ALU32:
         elif op == "XOR":
             res = xor_bits(a, b)
             C = Bit(False); V = Bit(False)
-        elif op in ("SLL", "SRL", "SRA"):
-            # use only the least-significant 5 bits of rs2
-            shamt5 = b[-5:]
-            if op == "SLL":
-                res = _barrel_shift_left(a, shamt5)
-            elif op == "SRL":
-                res = _barrel_shift_right_logical(a, shamt5)
-            else:
-                res = _barrel_shift_right_arith(a, shamt5)
-            C = Bit(False); V = Bit(False)
+        elif op == "SLL":
+            res = shift32(a, b, "SLL")
+            flags = {"N": bool(res[0]), "Z": all(not x for x in res), "C": False, "V": False}
+            return {"result": res, "flags": flags}
+        elif op == "SRL":
+            res = shift32(a, b, "SRL")
+            flags = {"N": bool(res[0]), "Z": all(not x for x in res), "C": False, "V": False}
+            return {"result": res, "flags": flags}
+        elif op == "SRA":
+            res = shift32(a, b, "SRA")
+            flags = {"N": bool(res[0]), "Z": all(not x for x in res), "C": False, "V": False}
+            return {"result": res, "flags": flags}
         else:
             # NOP/unknown: return zeros
             res = bits_zero(32)
