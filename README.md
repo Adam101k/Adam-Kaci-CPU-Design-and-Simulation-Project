@@ -242,6 +242,10 @@ Example passing run:
 ========================== 61 passed in 0.49s ==========================
 ```
 
+## Branch Strategy
+
+Branches were handled with the sole intent of keeping the main branch safe in case any changes resulted in bricking or test failure where there previous wasn't.
+
 ## Merge guidance (for a larger CPU later)
 
 - Keep the NumericCore API:
