@@ -246,6 +246,56 @@ Example passing run:
 
 Branches were handled with the sole intent of keeping the main branch safe in case any changes resulted in bricking or test failure where there previous wasn't.
 
+## Traces
+
+Most multi-step operations (MDU + FPU) produce cycle-by-cycle traces that show the internal algorithm decisions. Use **--trace** on CLI subcommands to print them.
+
+### What traces show
+
+- MDU / DIV* (restoring division)
+    - **DIV start: restoring unsigned** -- algorithm selected
+    - **DIV stepN: keep (R>=D)** -- subtraction succeeded; quotient bit 1
+    - **DIV stepN: restore (R<D)** -- subtraction underflowed; rever; quotient bit 1
+- MDU / MUL* (shift-add multiplier)
+    - **MUL stepN: add** -- multiplier LSB was 1; partial product added
+- FPU add/sub/mul
+    - **ALIGN:** -- exponent alignment shifts (with sticky)
+    - **OP:** -- actual significand op (add/sub or 24x24 shift-add)
+    - **NORMALIZE:** -- normalization steps (shift and exponent adjust)
+    - **PACK:** -- packing/overflow/underflow decisions
+    - Any special cases (NaN/infinity/signed-zero) are called out as **SPECIAL:** lines
+Exception flags are latched into FCSR.fflags and shown after each FPU command:
+- **NV** (invalid), **DZ** (divide by zero), **OF** (overflow), **UF** (underflow), **NX** (inexact)
+
+### Examples
+
+### Unsigned divide (DIVU) with trace
+
+```bash
+SD-sim div 0x80000000 3 --unsigned --trace
+```
+
+### Output:
+
+```bash
+DIVU: q=0x2AAAAAAA r=0x00000002 overflow=False
+DIV start: restoring unsigned
+DIV step0: restore (R<D)
+DIV step1: restore (R<D)
+DIV step2: keep (R>=D)
+...
+DIV step30: keep (R>=D)
+DIV step31: restore (R<D)
+```
+
+Interpretation:
+- Quotient bits are formed MSB→LSB across 32 steps.
+- **keep** marks a 1-bit; **restore** marks a 0-bit.
+- Sanity: **q*divisor + r == dividend, 0 ≤ r < divisor**.
+
+### Multiply (MUL low32) with trace
+
+
 ## Merge guidance (for a larger CPU later)
 
 - Keep the NumericCore API:
