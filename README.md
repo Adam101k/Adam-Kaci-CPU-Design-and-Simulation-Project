@@ -332,4 +332,4 @@ Interpretation
 
 Run the following prompt to activate the **gen_ai_report.py** script by doing the following:
 ```bash
-py tools/gen_ai_report.py
+python tools/gen_ai_report.py
