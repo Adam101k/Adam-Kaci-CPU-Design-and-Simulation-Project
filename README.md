@@ -123,9 +123,97 @@ SD-sim runhex  <path> [--trace]
 ### Example
 
 ```bash
-
+SD-sim loadhex test_base.hex
+SD-sim runhex test_base.hex
 ```
 Smaple file (as provided): [test_base.hex](./test_base.hex)
+
+### Program image format
+- One 32-bit instruction per line, exactly 8 hex digits (no **0x**)
+- One word per line, blank lines allowed, comments avoided for portability
+
+## Examples (copy/paste)
+
+```bash
+# ALU
+SD-sim add 0x7FFFFFFF 1
+SD-sim sub 0x80000000 1
+
+# FPU
+SD-sim fadd 3FC00000 40100000
+SD-sim fmul 7E967699 41200000
+SD-sim fadd 7F800000 FF800000
+
+# MDU
+SD-sim mul 12345678 -87654321 --trace
+SD-sim div -7 3
+SD-sim div 0x80000000 3 --unsigned --trace
+
+# Loader / Runner
+SD-sim loadhex test_base.hex
+SD-sim runhex test_base.hex
+```
+
+## Project layout
+
+```bash
+src/
+  alu.py
+  fcsr.py
+  fpu.py
+  gates.py
+  loader.py
+  main.py
+  mdu.py
+  memory.py
+  registers.py
+  runner.py
+  shifter.py
+  twos.py
+tests/
+  test_alu.py
+  test_fcsr.py
+  test_fpu.py
+  test_mdu_divu_remu.py
+  test_mdu.py
+  test_registers.py
+  test_shifter.py
+  test_shifter.py
+  test_twos.py
+```
+
+## Constraints & style (enforced in impl modules)
+
+- No host numeric shortcuts in implementation paths:
+    - Forbidden inside impl: **+ - * / % << >>**, built-in base conversions **(int(..., base), bin(), hex(), format())**, float math
+    - All arithmetic is done via bit-level logic (full adders, shifter, etc.)
+- Data carried as bit vectors (**Tuple[Bit, ...]**), MSB-first
+-  Pretty-print binary grouped by bytes; hex is always zero-padded
+- Clean separation of concerns; pure, testable functions; deterministic behavior
+
+## Testing
+
+Run the full test suite:
+```bash
+pytest
+```
+You should see all tests pass. Current suite includes:
+- Two’s-complement encode/ decode (boundaries, overflow)
+- ALU (ADD/SUB corner cases, flags; shifts)
+- Shifter (SLL/SRL/SRA)
+- MDU (MUL low32 + overflow visibility; MULH/MULHU/MULHSU; DIV/REM with RISC-V edges)
+- FPU (normal/subnormal/inf/NaN, rounding to even, flags & traces)
+- FCSR propagation (NV/DZ/OF/UF/NX)
+- Registers (x0 hard-wired to zero; FP regs; Reg load/clear)
+
+Example passing run:
+```bash
+========================== 61 passed in 0.49s ==========================
+```
+
+## Merge guidance (for a larger CPU later)
+
+- Keep the NumericCore API:
 
 ## AI Usage
 
