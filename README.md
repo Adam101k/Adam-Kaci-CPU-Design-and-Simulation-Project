@@ -318,6 +318,16 @@ Interpretation
     - Use **State{ regs, fregs, fcsr } and pure functions that transform state
     Avoid global state; make traces easy to capture in tests
 
+## Block diagram
+
+### High-level block diagram 
+
+![High-level block diagram][High-level block diagram.png]
+
+### FPU add/sub pipeline sketch
+
+![FPU add/sub pipeline sketch][FPU add/sub pipeline sketch.png]
+
 ## Scan Project for AI Usage
 
 Run the following prompt to activate the **gen_ai_report.py** script by doing the following:
