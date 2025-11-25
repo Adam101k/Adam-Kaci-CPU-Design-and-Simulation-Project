@@ -322,11 +322,11 @@ Interpretation
 
 ### High-level block diagram 
 
-![High-level block diagram][High-level block diagram.png]
+![High-level block diagram](Img2.png)
 
 ### FPU add/sub pipeline sketch
 
-![FPU add/sub pipeline sketch][FPU add/sub pipeline sketch.png]
+![FPU add/sub pipeline sketch](Img1.png)
 
 ## Scan Project for AI Usage
 
