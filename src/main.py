@@ -12,8 +12,9 @@ def _bits32_from_int(v: int):
     u = v & 0xFFFFFFFF
     return tuple(Bit(bool((u>>i)&1)) for i in range(31,-1,-1))
 
-def _print_bits32(label, bits):
-    enc = encode_twos_complement(int("".join("1" if b else "0" for b in bits), 2) if False else 0)  # unused, kept for ref
+def auto_int(s: str) -> int:
+    # accepts decimal or prefixed bases: 0x..., 0b..., 0o...
+    return int(s, 0)
 
 def main():
     p = argparse.ArgumentParser(prog="SD-sim")
@@ -27,8 +28,8 @@ def main():
     pf = sub.add_parser("fadd"); pf.add_argument("ahex"); pf.add_argument("bhex")
     pfs= sub.add_parser("fsub"); pfs.add_argument("ahex"); pfs.add_argument("bhex")
     pfm= sub.add_parser("fmul"); pfm.add_argument("ahex"); pfm.add_argument("bhex")
-    pm = sub.add_parser("mul");  pm.add_argument("a", type=int); pm.add_argument("b", type=int); pm.add_argument("--trace", action="store_true")
-    pd = sub.add_parser("div");  pd.add_argument("a", type=int); pd.add_argument("b", type=int); pd.add_argument("--unsigned", action="store_true"); pd.add_argument("--trace", action="store_true")
+    pm = sub.add_parser("mul"); pm.add_argument("a", type=auto_int); pm.add_argument("b", type=auto_int); pm.add_argument("--trace", action="store_true") 
+    pd = sub.add_parser("div"); pd.add_argument("a", type=auto_int); pd.add_argument("b", type=auto_int); pd.add_argument("--unsigned", action="store_true"); pd.add_argument("--trace", action="store_true");
     pl = sub.add_parser("loadhex"); pl.add_argument("path")
     pr = sub.add_parser("runhex"); pr.add_argument("path"); pr.add_argument("--trace", action="store_true"); pr.add_argument("--steps", type=int, default=200)
 

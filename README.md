@@ -141,7 +141,7 @@ Smaple file (as provided): [test_base.hex](./test_base.hex)
 - One 32-bit instruction per line, exactly 8 hex digits (no **0x**)
 - One word per line, blank lines allowed, comments avoided for portability
 
-## Examples (copy/paste)
+## Example Inputs (copy/paste)
 
 ```bash
 # ALU
@@ -161,6 +161,26 @@ SD-sim div 0x80000000 3 --unsigned --trace
 # Loader / Runner
 SD-sim loadhex test_base.hex
 SD-sim runhex test_base.hex
+```
+
+## Example Outputs
+
+```bash
+
+# Loader
+> SD-sim loadhex test_base.hex
+Loaded 11 words from test_base.hex
+
+# Runner
+> SD-sim runhex test_base.hex
+Completed in 10 steps, PC=0x00000028
+x1 = 0x00000005
+x2 = 0x0000000A
+x3 = 0x0000000F
+x4 = 0x0000000F
+x5 = 0x00010000
+x6 = 0x00000002
+mem[0x00010000] = 0x0000000F
 ```
 
 ## Project layout
