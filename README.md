@@ -295,6 +295,21 @@ Interpretation:
 
 ### Multiply (MUL low32) with trace
 
+```bash
+SD-sim mul 0x00BC614E 0xFA0A1F4F --trace
+```
+
+#### Sample output (abridged):
+```bash
+MUL: rd=0xD91D0712 overflow=True
+MUL start: 32x32 -> 64 shift-add
+MUL step21: add
+MUL step23: add
+...
+```
+Interpretation
+- Each **stepN: add** indicates the multiplier’s current LSB was 1 → partial product added at offset N.
+- **overflow=True** indicates the full 64-bit product cannot be represented as signed 32-bit.
 
 ## Merge guidance (for a larger CPU later)
 
