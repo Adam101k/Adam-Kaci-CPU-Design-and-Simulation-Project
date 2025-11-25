@@ -39,7 +39,7 @@ class TestALU32(unittest.TestCase):
         out = self.alu.exec(a, b, "ADD")
         self.assertEqual(bits_to_hex32(out["result"]), "0xFFFFFFFE")
         self.assertEqual(out["flags"], {"N": True, "Z": False, "C": True, "V": False})
-
+    #AI-BEGIN
     def test_add_13_plus_neg13_zero(self):
         a = hex32_to_bits_msb("0000000D")
         b = hex32_to_bits_msb("FFFFFFF3")
@@ -101,3 +101,5 @@ class TestALU32(unittest.TestCase):
         b = hex32_to_bits_msb("00000003")
         out = alu32(a, b, "ADD")
         self.assertEqual(bits_to_hex32(out["result"]), "0x00000005")  # sanity
+    
+    #AI-END

@@ -4,6 +4,7 @@ In this project, I designed and simulated a simple 32-bit RISC-V CPU that implem
 
 ## Features
 
+<!-- AI-BEGIN -->
 - **Two’s-Complement Toolkit (RV32 width)**
   - Encode/decode 32-bit two’s-complement
   - Sign/zero extend helpers
@@ -49,6 +50,14 @@ python -m venv .venv
 pip install -e .
 pytest
 ```
+<!-- AI-END -->
+
+Important note, if for some reason your python code is not running for any particular reason, instead attempt to run the code via:
+```bash
+py -m venv .venv
+```
+Swap out any commands that start with **python** with **py**, hopefully that should help.
+
 ## How to run program
 
 The project installs a console script named `SD-sim`.
@@ -180,6 +189,8 @@ tests/
   test_shifter.py
   test_shifter.py
   test_twos.py
+tools/
+    gen_ai_report.py
 ```
 
 ## Constraints & style (enforced in impl modules)
@@ -214,11 +225,12 @@ Example passing run:
 ## Merge guidance (for a larger CPU later)
 
 - Keep the NumericCore API:
+    - **alu32(rs1,bits,op), mdu_mul(op, rs1, rs2), mdu_div(op, rs1, rs2)**
+    - Use **State{ regs, fregs, fcsr } and pure functions that transform state
+    Avoid global state; make traces easy to capture in tests
 
-## AI Usage
+## Scan Project for AI Usage
 
-- Assisted creating initial file structure setup "I need to setup my initial file structure". The suggestion was used to setup the initial pyproject.toml.
-
-- Assisted in creating test prompts for ALU, FPU, MDU files. Such prompts included "I want to test the following file to see if it's working as intended, give me a skeleton test file in python"
-
-- Assisted in formating **README.md**, prompts included "This is what my program does: _, can you format this in a .md format similar to what I already have here: _"
+Run the following prompt to activate the **gen_ai_report.py** script by doing the following:
+```bash
+py tools/gen_ai_report.py

@@ -14,6 +14,7 @@ def bits_to_hex32(bits):
 
 class TestMDU(unittest.TestCase):
 
+    # AI-BEGIN
     def test_mul_low32_and_overflow_flag(self):
         # 12345678 * -87654321
         a = hex32_to_bits_msb("00BC614E")   # 12345678
@@ -57,3 +58,4 @@ class TestMDU(unittest.TestCase):
         self.assertEqual(bits_to_hex32(out["r_bits"]), "0x00000000")
         # Overflow flag is for grading visibility per spec
         self.assertTrue(out["flags"]["overflow"])
+    ## AI-END

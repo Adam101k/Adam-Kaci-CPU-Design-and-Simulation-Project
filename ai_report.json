@@ -1,0 +1,9 @@
+{
+  "total_lines": 2725,
+  "ai_tagged_lines": 163,
+  "percent": 6.0,
+  "tools": [
+    "ChatGPT"
+  ],
+  "method": "count markers"
+}
