@@ -74,5 +74,63 @@ SD-sim add 0x7FFFFFFF 1
 SD-sim sub 0x80000000 1
 ```
 
+### 2. Float32 FPU ops (hex bit patterns)
+
+```bash
+SD-sim fadd <hex32> <hex32>
+SD-sim fsub <hex32> <hex32>
+SD-sim fmul <hex32> <hex32>
+```
+- Operands are raw hex bit patterns (8 hex digits, with or without 0x).
+- Output: result hex + detailed flags + FCSR view.
+- Prints algorithm trace lines when relevant.
+
+### Examples
+
+```bash
+SD-sim fadd 3FC00000 40100000          # 1.5 + 2.25 = 3.75
+SD-sim fmul 7E967699 41200000          # ~1e38 * 10 -> +inf (OF,NX)
+SD-sim fadd 7F800000 FF800000          # +inf + -inf -> qNaN (NV)
+```
+
+### Multiply/Divide Unit (RV32M)
+
+```bash
+SD-sim mul <a:int> <b:int> [--trace]
+SD-sim div <a:int> <b:int> [--unsigned] [--trace]
+```
+- **mul** computes **MUL** (low 32) with an overflow visibility flag (if 64-bit product doesn’t fit a signed 32-bit).
+- **div** supports **DIV** (signed) and **DIVU** (**--unsigned**). Remainder behavior matches RISC-V. Division by zero and **INT_MIN / -1** edges are handled.
+- **--trace** shows per-step shift-add (mul) or restoring division iterations.
+
+### Examples
+
+```bash
+SD-sim mul 12345678 -87654321 --trace
+SD-sim div -7 3
+SD-sim div 0x80000000 3 --unsigned --trace
+```
+
+### Program image (hex) loader & mini runner
+
+```bash
+SD-sim loadhex <path>
+SD-sim runhex  <path> [--trace]
+```
+- **loadhex** just parses and reports how many 32-bit words were loaded.
+- **runhex** executes a tiny demonstration over your core components (simple ALU/shifter/FPU/MDU demo path, not a full ISA interpreter), reporting final register/memory values consistent with the provided sample.
+
+### Example
+
+```bash
+
+```
+Smaple file (as provided): [test_base.hex](./text_base.hex)
+
 ## AI Usage
-AI was used for creating initial file structure setup "I need to setup my initial file structure". The suggestion was used to setup the initial pyproject.toml.
+
+- Assisted creating initial file structure setup "I need to setup my initial file structure". The suggestion was used to setup the initial pyproject.toml.
+
+- Assisted in creating test prompts for ALU, FPU, MDU files. Such prompts included "I want to test the following file to see if it's working as intended, give me a skeleton test file in python"
+
+- Assisted in formating **README.md**, prompts included "This is what my program does: _, can you format this in a .md format similar to what I already have here: _"
