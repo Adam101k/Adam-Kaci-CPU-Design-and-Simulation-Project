@@ -125,7 +125,7 @@ SD-sim runhex  <path> [--trace]
 ```bash
 
 ```
-Smaple file (as provided): [test_base.hex](./text_base.hex)
+Smaple file (as provided): [test_base.hex](./test_base.hex)
 
 ## AI Usage
 
