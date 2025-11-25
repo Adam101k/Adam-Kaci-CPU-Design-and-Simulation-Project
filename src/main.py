@@ -6,6 +6,7 @@ from fpu import fadd_f32, fsub_f32, fmul_f32
 from mdu import mdu_mul, mdu_div
 from loader import load_hex_file
 from runner import run_hex
+from registers import FCSR
 
 def _bits32_from_int(v: int):
     u = v & 0xFFFFFFFF
@@ -45,17 +46,44 @@ def main():
         for bit in out["result"]: v=(v<<1)|(1 if bit else 0)
         print(f"{op}: result=0x{v:08X} flags={out['flags']}")
     elif args.cmd in ("fadd","fsub","fmul"):
-        def hx(s): 
-            v = int(s,16)&0xFFFFFFFF
-            return tuple(Bit(bool((v>>i)&1)) for i in range(31,-1,-1))
-        A=hx(args.ahex); B=hx(args.bhex)
-        fn = {"fadd":fadd_f32,"fsub":fsub_f32,"fmul":fmul_f32}[args.cmd]
-        out = fn(A,B)
-        v=0
-        for bit in out["res_bits"]: v=(v<<1)|(1 if bit else 0)
-        print(f"{args.cmd}: res=0x{v:08X} flags={out['flags']}")
-        if "trace" in out: 
-            for t in out["trace"]: print(t)
+        def hx(s: str):
+            s = s.strip().lower().replace("0x", "")
+            v = int(s, 16) & 0xFFFFFFFF
+            return tuple(Bit(bool((v >> i) & 1)) for i in range(31, -1, -1))
+
+        A = hx(args.ahex)
+        B = hx(args.bhex)
+
+        fn = {
+            "fadd": fadd_f32,
+            "fsub": fsub_f32,
+            "fmul": fmul_f32,
+        }[args.cmd]
+
+        out = fn(A, B)
+
+        fcsr = FCSR()  # frm defaults to 0 (RNE), which matches our FPU
+        fcsr.set_from_flags(out["flags"])
+
+        # Pack result bits into hex for display
+        v = 0
+        for bit in out["res_bits"]:
+            v = (v << 1) | (1 if bit else 0)
+
+        # Compose fflags as 5-bit integer: NV DZ OF UF NX => bits [4:0]
+        fflags_int = (fcsr.nv << 4) | (fcsr.dz << 3) | (fcsr.of << 2) | (fcsr.uf << 1) | (fcsr.nx << 0)
+
+        print(
+            f"{args.cmd}: res=0x{v:08X} "
+            f"flags={out['flags']} "
+            f"FCSR(frm={fcsr.frm}, fflags=0b{fflags_int:05b} [NV:{fcsr.nv} DZ:{fcsr.dz} OF:{fcsr.of} UF:{fcsr.uf} NX:{fcsr.nx}])"
+        )
+
+        # Print trace if present
+        if "trace" in out:
+            for t in out["trace"]:
+                print(t)
+
     elif args.cmd=="mul":
         A=_bits32_from_int(args.a); B=_bits32_from_int(args.b)
         out = mdu_mul("MUL", A, B)
@@ -78,7 +106,6 @@ def main():
         prog = load_hex_file(args.path)
         print(f"Loaded {len(prog)} words from {args.path}")
     elif args.cmd == "runhex":
-        from runner import run_hex
         out = run_hex(args.path, max_steps=args.steps, trace=args.trace)
         regs = out["regs"]; mem = out["mem"]
         print(f"Completed in {out['steps']} steps, PC=0x{out['pc']:08X}")
